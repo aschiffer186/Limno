@@ -1,0 +1,8 @@
+Want to have an ndim-array (e.g. vector or column)
+
+Should be able to index and slice 
+    T(1)
+    T(1, 2)
+
+LimnoMatrix<double, DYNAMIC, DYNAMIC>(1, {rows, cols})
+LimnoMatrix<double, DYNAMIC, DYNAMIC>(1, rows, cols)
