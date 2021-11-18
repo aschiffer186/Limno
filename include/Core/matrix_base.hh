@@ -23,11 +23,87 @@ namespace LIB_NAMESPACE_BASE
         template<int _Nrows, int _Ncols>
         static constexpr bool runtimeDim = _Nrows == DYNAMIC || _Ncols == DYNAMIC;
 
-        template<typename>
-        struct _Iterator;
+        template<typename _Tp>
+        struct _Iterator
+        {
+            using value_type = _Tp;
+            using reference = value_type&;
+            using pointer = value_type*;
+            using iterator_category = std::random_access_iterator_tag;
+            using difference_type = std::ptrdiff_t;
 
-        template<typename>
-        struct _ConstIterator;
+            _Iterator()
+                : _curr{nullptr}, _data{nullptr}
+            {
+
+            }
+
+            _Iterator(pointer curr, pointer data)
+                : _curr{curr}, _data{data} 
+            {
+
+            }
+
+            reference operator*()
+            {
+                return *_curr;
+            }
+
+            pointer operator->()
+            {
+                return _curr;
+            }
+
+            _Iterator<_Tp>& operator++()
+            {
+                if (_isRowOrder)
+                {
+                    ++_curr;
+                }
+                return *this;
+            }
+
+            _Iterator<_Tp> operator++(int) const 
+            {
+                _Iterator<_Tp> temp{*this};
+                ++(*this);
+                return temp;
+            }
+
+            private:
+            template<typename _UTp>
+            friend bool operator!=(const _Iterator<_UTp>& lhs, const _Iterator<_UTp>& rhs);
+            private:
+            bool _isRowOrder;
+            pointer _curr;
+            pointer _data;
+        };
+
+        template<typename _Tp>
+        struct _ConstIterator
+        {
+            using value_type = _Tp;
+            using reference = const value_type&;
+            using pointer = const value_type*;
+            using iterator_category = std::random_access_iterator_tag;
+            using difference_type = std::ptrdiff_t;
+
+            _ConstIterator()
+                : _curr{nullptr}, _data{nullptr}
+            {
+
+            }
+            
+            _ConstIterator(_Iterator<_Tp> iter)
+                : _curr{iter._curr}, _data{iter._data}
+            {
+                
+            }
+
+            private:
+            pointer _curr;
+            pointer _data;
+        };
 
         //Base implemenation of Matrix, handles memory and some
         //C++ container requirements.
@@ -238,7 +314,7 @@ namespace LIB_NAMESPACE_BASE
             //Traverse in row-major order
             constexpr iterator begin() noexcept
             {
-
+                return iterator{_data, _data};
             }
 
             constexpr const_iterator begin() const noexcept
@@ -253,17 +329,17 @@ namespace LIB_NAMESPACE_BASE
 
             constexpr iterator end() noexcept
             {
-
+                return iterator{};
             }
 
             constexpr const_iterator end() const noexcept
             {
-
+                return const_iterator{};
             }
 
             constexpr const_iterator cend() const noexcept 
             {
-                
+                return const_iterator{};
             }
 
             //Traverse in column major order 

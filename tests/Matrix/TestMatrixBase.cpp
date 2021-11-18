@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "Core/array_base.hh"
+#include "Core/matrix_base.hh"
 #include "config.hh"
 
 using namespace Limno::_detail;

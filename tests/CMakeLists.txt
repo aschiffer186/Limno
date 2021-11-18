@@ -1,5 +1,5 @@
 # Ndarray tests 
-set(MatrixTestFiles Array/TestMatrixBase.cpp)
+set(MatrixTestFiles Matrix/TestMatrixBase.cpp)
 # C++ 20 Test
 add_executable(TestMatrixBaseExec ${MatrixTestFiles})
 target_compile_features(TestMatrixBaseExec PRIVATE cxx_std_20)
