@@ -1,3 +1,4 @@
+#include <iterator>
 #include <sstream>
 
 #include <gtest/gtest.h>
@@ -167,4 +168,56 @@ TEST(MatrixBase, OstreamOperator)
     std::ostringstream actual2;
     actual2 << m3;
     EXPECT_STREQ(expected2.c_str(), actual2.str().c_str());
+}
+
+TEST(MatrixBase, RowIterators)
+{
+    std::vector<std::vector<int>> c = {
+        {1, 2}, 
+        {3, 4}
+    };
+
+    LimnoMatrixBase<int, 2, 2> m1(c);
+    
+    #if __cplusplus > 201703L
+    static_assert(std::contiguous_iterator<decltype(m1.begin())>, "Expected contiguous iterator");
+    #endif
+    //Test incrementing begin
+    auto it = m1.begin();
+    EXPECT_EQ(*it, 1);
+    ++it;
+    EXPECT_EQ(*it, 2);
+    ++it;
+    EXPECT_EQ(*it, 3);
+    ++it;
+    EXPECT_EQ(*it, 4);
+    ++it;
+    auto end = m1.end();
+    EXPECT_TRUE(it == end);
+
+    //Test decrementing begin
+    auto it2 = m1.begin();
+    ++it2;
+    ++it2; 
+    --it2;
+    EXPECT_EQ(*it2, 2);
+
+    //Test decrementing end iterator 
+    auto end2 = m1.end();
+    --end2;
+    EXPECT_EQ(*end2, 4);
+
+    //Test comparing two iteratros 
+    auto it3 = m1.begin();
+    auto it4 = m1.begin();
+    ++it3, ++it4;
+    EXPECT_TRUE(it3 == it4);
+    EXPECT_FALSE(it3 != it4);
+
+    //Test dereferencing iterator 
+    LimnoMatrixBase<int, 2, 2> m2{c};
+
+    auto it5 = m2.begin();
+    *it5 = 5;
+    EXPECT_EQ(m2(0, 0), 5);
 }

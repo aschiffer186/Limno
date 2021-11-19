@@ -24,32 +24,37 @@ namespace LIB_NAMESPACE_BASE
         static constexpr bool runtimeDim = _Nrows == DYNAMIC || _Ncols == DYNAMIC;
 
         template<typename _Tp>
+        //Satisfies LegacyContiguousIterator requirements (std::contiguous_iterator<_Iterator> is true)
         struct _Iterator
         {
             using value_type = _Tp;
-            using reference = value_type&;
-            using pointer = value_type*;
+            using reference = _Tp&;
+            using pointer = _Tp*;
             using iterator_category = std::random_access_iterator_tag;
+            #if __cplusplus > 201703L
+            using iterator_concept = std::contiguous_iterator_tag;
+            #endif
             using difference_type = std::ptrdiff_t;
 
-            _Iterator()
-                : _curr{nullptr}, _data{nullptr}
+            _Iterator() :
+                _isRowOrder{true}, _curr{}, _data{}
             {
 
             }
 
-            _Iterator(pointer curr, pointer data)
-                : _curr{curr}, _data{data} 
+            _Iterator(pointer curr, pointer data, bool isRowOrder = true)
+                : _isRowOrder{isRowOrder}, _curr{curr}, _data{data}
             {
 
             }
 
-            reference operator*()
+            //LegacyForwardIterator requiremtns
+            reference operator*() const
             {
                 return *_curr;
             }
 
-            pointer operator->()
+            pointer operator->() const
             {
                 return _curr;
             }
@@ -70,10 +75,118 @@ namespace LIB_NAMESPACE_BASE
                 return temp;
             }
 
+            _Iterator<_Tp>& operator--() 
+            {
+                if (_isRowOrder)
+                {
+                    --_curr;
+                }
+                return *this;
+            }
+
+             _Iterator<_Tp> operator--(int) const 
+            {
+                _Iterator<_Tp> temp{*this};
+                --(*this);
+                return temp;
+            }
+
+            _Iterator<_Tp>& operator+=(difference_type n) 
+            {
+                if (_isRowOrder)
+                {
+                    _curr += n;
+                }
+                return *this;
+            }
+
+            _Iterator<_Tp>& operator-=(difference_type n)
+            {
+                if (_isRowOrder)
+                {
+                    _curr -= n;
+                }
+                return *this;
+            }
+
+            reference operator[](difference_type n) const
+            {
+                return *(_curr + n);
+            }
+
             private:
             template<typename _UTp>
-            friend bool operator!=(const _Iterator<_UTp>& lhs, const _Iterator<_UTp>& rhs);
+            friend bool operator!=(const _Iterator<_UTp>& lhs, const _Iterator<_UTp>& rhs)
+            {
+                if(!lhs._curr)
+                    return !rhs._curr && lhs._isRowOrder == rhs._isRowOrder;
+                return lhs._curr != rhs._curr || lhs._isRowOrder != rhs._isRowOrder;
+            }
+            template<typename _UTp>
+            friend bool operator==(const _Iterator<_UTp>& lhs, const _Iterator<_UTp>& rhs)
+            {
+                return !(lhs != rhs);
+            }
+
+            template<typename _UTp>
+            friend _Iterator<_UTp> operator+(_Iterator<_UTp> lhs, difference_type n)
+            {
+                _Iterator<_Tp> temp = lhs;
+                temp += n;
+                return temp;
+            }
+            template<typename _UTp>
+            friend _Iterator<_UTp> operator+(difference_type n, _Iterator<_UTp> rhs)
+            {
+                _Iterator<_Tp> temp = rhs;
+                temp += n;
+                return temp;
+            }
+            template<typename _UTp>
+            friend _Iterator<_UTp> operator-(const _Iterator<_UTp>& lhs, difference_type n)
+            {
+                _Iterator<_Tp> temp = lhs;
+                temp -= n;
+                return temp;
+            }
+            template<typename _UTp>
+            friend difference_type operator-(const _Iterator<_UTp>& lhs, const _Iterator<_UTp>& rhs)
+            {
+                if (lhs._isRowOrder && rhs._isRowOrder)
+                {
+                    return lhs._curr - rhs._curr;
+                }
+            }
+
+            template<typename _UTp>
+            friend bool operator<(const _Iterator<_UTp>& lhs, const _Iterator<_UTp>& rhs)
+            {
+                if (lhs._isRowOrder && rhs._isRowOrder)
+                {
+                    return lhs._curr < rhs._curr;
+                }
+            }
+
+            template<typename _UTp>
+            friend bool operator>(const _Iterator<_UTp>& lhs, const _Iterator<_UTp>& rhs)
+            {
+                if (lhs._isRowOrder && rhs._isRowOrder)
+                {
+                    return lhs._curr > rhs._curr;
+                }
+            }
+            template<typename _UTp>
+            friend bool operator<=(const _Iterator<_UTp>& lhs, const _Iterator<_UTp>& rhs)
+            {
+                return !(lhs > rhs);
+            }
+            template<typename _UTp>
+            friend bool operator>=(const _Iterator<_UTp>& lhs, const _Iterator<_UTp>& rhs)
+            {
+                return !(lhs < rhs);
+            }
             private:
+            //Flag indicating if iterator show ierator through rows or columns of matrix
             bool _isRowOrder;
             pointer _curr;
             pointer _data;
@@ -95,12 +208,13 @@ namespace LIB_NAMESPACE_BASE
             }
             
             _ConstIterator(_Iterator<_Tp> iter)
-                : _curr{iter._curr}, _data{iter._data}
+                : _curr{iter._curr}, _data{iter._data}, _isRowOrder(iter._isRow)
             {
                 
             }
 
             private:
+            bool _isRowOrder;
             pointer _curr;
             pointer _data;
         };
@@ -220,12 +334,12 @@ namespace LIB_NAMESPACE_BASE
 
             //Constructor from arbitrary container
             #if __cplusplus > 201703L
-            template<typename _CTp> 
-                requires Container<_CTp>
+            template<typename _CTp1, template<typename, typename ...> typename _CTp2, typename... _ArgsTp> 
+                requires Container<_CTp2<_CTp1, _ArgsTp...>>
             #else 
-            template<typename _CTp>
+            template<typename _CTp1, template <typename, typename...> typename _CTp2, typename... _ArgsTp>
             #endif
-            LimnoMatrixBase(const _CTp& c) noexcept(!runtimeDim<_Nrows, _Ncols>)
+            LimnoMatrixBase(const _CTp2<_CTp1, _ArgsTp...>& c) noexcept(!runtimeDim<_Nrows, _Ncols>)
             {
                 size_type size = std::begin(c)->size()*c.size();
                 size_type contSize = (runtimeDim<_Nrows, _Ncols>) ? size : _Nrows*_Ncols;
@@ -314,32 +428,32 @@ namespace LIB_NAMESPACE_BASE
             //Traverse in row-major order
             constexpr iterator begin() noexcept
             {
-                return iterator{_data, _data};
+                return iterator{_data.data(), _data.data()};
             }
 
             constexpr const_iterator begin() const noexcept
             {
-
+                return const_iterator(_data.data(), _data.data());
             }
 
             constexpr const_iterator cbegin() const noexcept 
             {
-
+                //return const_iterator{_data.data(), _data.data()};
             }
 
             constexpr iterator end() noexcept
             {
-                return iterator{};
+                return iterator{_data.data() + _data.size(), _data.data()};
             }
 
             constexpr const_iterator end() const noexcept
             {
-                return const_iterator{};
+                
             }
 
             constexpr const_iterator cend() const noexcept 
             {
-                return const_iterator{};
+                
             }
 
             //Traverse in column major order 
